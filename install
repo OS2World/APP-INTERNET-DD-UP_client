@@ -1,0 +1,132 @@
+#!/bin/sh
+
+CONF_PATH="/etc"
+INSTALL_PATH="/sbin"
+MKFL="Makefile"
+CC="gcc"
+DEBUG="-g"
+#DEBUG=""
+DEFINES=""
+LIBS=""
+if [ "$1" = "solaris" ]; then
+	echo "Compiling for solaris...we think!"
+	LIBS=" -lnsl -lsocket"
+fi
+
+DD_UN="test"
+DD_PW="test"
+CFA="ddup.conf"
+
+# For AIX
+# DEFINES = -D_BSD=44
+# LIBS = -lbsd
+
+###############################
+#
+#  Ok, Now we Get into the accual configurations...
+
+echo " "
+echo "Welcome to configuration for DD-UP."
+echo " "
+
+if [ "$1" = "clean" ]; then
+	echo "Ok We will get rid of object and binary files"
+	rm -f ddup *.o options.h
+	exit
+fi
+
+FOO=""
+runonce=""
+while [ -z "$FOO" ] ; do
+    FOO="$CONF_PATH"
+    echo ""
+    echo "What directory do you wish to install ddup.conf (CONFIGURATION FILE) in?"
+    echo "Note, this directory name shouldn't end with a /"
+    echo -n "[$FOO] -> $c"
+    if [ -z "$AUTO_CONFIG" -o -n "$runonce" ] ; then
+	read cc
+    else
+	cc=""
+	runonce=Yes
+    fi
+    if [ -z "$cc" ] ; then
+	cc=$FOO
+    fi
+done
+CONF_PATH=$cc
+CF="${CONF_PATH}/${CFA}"
+
+FOO=""
+runonce=""
+while [ -z "$FOO" ] ; do
+    FOO="$INSTALL_PATH"
+    echo ""
+    echo "What directory do you wish to install ddup (program binary) in?"
+    echo "Note, this directory name shouldn't end with a /"
+    echo -n "[$FOO] -> $c"
+    if [ -z "$AUTO_CONFIG" -o -n "$runonce" ] ; then
+	read cc
+    else
+	cc=""
+	runonce=Yes
+    fi
+    if [ -z "$cc" ] ; then
+	cc=$FOO
+    fi
+done
+INSTALL_PATH=$cc
+
+#############
+# Thats all for the user part, now to write to a file...
+
+echo ""
+echo -n "Compiling...this shouldn't take too long"
+echo ""
+##################################################################################
+        echo "#define file_name \"${CONF_PATH}/ddup.conf\"" > options.h
+
+
+        ${CC} ${DEFINES} ${DEBUG} -c ddup.c
+
+	${CC} ${DEFINES} ${DEBUG} -c ddup_functions.c
+
+        ${CC} ${DEFINES} ${DEBUG} -c getopt.c
+
+        ${CC} ${DEFINES} ${DEBUG} -c getopt1.c
+
+        ${CC} ${DEFINES} ${DEBUG} -c parse_config.c
+
+        ${CC} ${DEFINES} ${DEBUG} -c parse_option.c
+
+	${CC} ${DEFINES} ${DEBUG} -c update.c
+
+	${CC} ${DEFINES} ${DEBUG} -o ddup ddup.o ddup_functions.o getopt.o getopt1.o parse_config.o parse_option.o update.o ${LIBS}
+
+        echo "Copying binary to ${INSTALL_PATH}"
+        cp ./ddup ${INSTALL_PATH}/ddup
+
+	if [ -d /usr/local/man/man1 ]; then
+		echo "Copying manual page to /usr/local/man/man1"
+		cp ./ddup.1.gz /usr/local/man/man1
+        elif [ -d /usr/man/man1 ]; then
+		echo "Copying manual page to /usr/man/man1"
+		cp ./ddup.1.gz /usr/man/man1
+	else
+		echo "Couldn't determine a directory for manual page"
+	fi
+
+        echo "***! DON'T FORGET TO MAKE YOUR CONFIG FILE! (${CONF_PATH}/ddup.conf) !***"
+
+	echo "Would you like to make a configuration file: (y/n)"
+	read ans
+	if [ $ans = 'y' -o $ans = 'Y' ]; then
+	        echo ""
+	        echo "Creating config file..."
+	        echo ""
+
+		${INSTALL_PATH}/ddup --makeconf
+	else
+		echo ""
+		echo "Skipping creation of config file."
+		echo ""
+	fi
